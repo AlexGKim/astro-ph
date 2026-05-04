@@ -1,8 +1,7 @@
-# src/llm_filter.py
 import json
 import logging
-import openai
-from openai import OpenAI
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +20,12 @@ INTERESTS = """
 """
 
 
-def filter_papers(papers, api_key=None, model="gpt-4o-mini"):
+def filter_papers(papers, model="anthropic.claude-3-haiku-20240307-v1:0"):
     """Uses LLM to filter papers. Returns list of matched arXiv IDs."""
     if not papers:
         return []
 
-    client = OpenAI(api_key=api_key)
+    client = boto3.client("bedrock-runtime")
     all_matched_ids = []
 
     # Process papers in batches of 20 to avoid context limits
@@ -53,19 +52,16 @@ def filter_papers(papers, api_key=None, model="gpt-4o-mini"):
 
         content = ""
         try:
-            response = client.chat.completions.create(
-                model=model,
+            response = client.converse(
+                modelId=model,
                 messages=[
-                    {"role": "system", "content": "You output JSON arrays of strings."},
-                    {"role": "user", "content": prompt},
+                    {"role": "user", "content": [{"text": prompt}]},
                 ],
-                temperature=0.0,
+                system=[{"text": "You output JSON arrays of strings."}],
+                inferenceConfig={"temperature": 0.0},
             )
 
-            if response.choices[0].message.content is None:
-                continue
-
-            content = response.choices[0].message.content.strip()
+            content = response["output"]["message"]["content"][0]["text"].strip()
 
             # Handle markdown code blocks if the LLM adds them
             if content.startswith("```"):
@@ -74,8 +70,8 @@ def filter_papers(papers, api_key=None, model="gpt-4o-mini"):
             matched_ids = json.loads(content)
             all_matched_ids.extend(matched_ids)
 
-        except openai.OpenAIError as e:
-            logger.error(f"OpenAI API error: {e}")
+        except (BotoCoreError, ClientError) as e:
+            logger.error(f"Bedrock API error: {e}")
             continue
         except json.JSONDecodeError:
             logger.error(f"Error decoding JSON: {content}")
