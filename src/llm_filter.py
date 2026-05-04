@@ -20,6 +20,9 @@ INTERESTS = """
 """
 
 
+BATCH_SIZE = 20
+
+
 def filter_papers(papers, model="anthropic.claude-3-haiku-20240307-v1:0"):
     """Uses LLM to filter papers. Returns list of matched arXiv IDs."""
     if not papers:
@@ -28,10 +31,9 @@ def filter_papers(papers, model="anthropic.claude-3-haiku-20240307-v1:0"):
     client = boto3.client("bedrock-runtime")
     all_matched_ids = []
 
-    # Process papers in batches of 20 to avoid context limits
-    batch_size = 20
-    for i in range(0, len(papers), batch_size):
-        batch = papers[i : i + batch_size]
+    # Process papers in batches of BATCH_SIZE to avoid context limits
+    for i in range(0, len(papers), BATCH_SIZE):
+        batch = papers[i : i + BATCH_SIZE]
 
         prompt = f"""
         You are an expert astrophysicist evaluating papers for a researcher.
