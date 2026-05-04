@@ -5,32 +5,13 @@ from unittest.mock import patch, MagicMock
 from main import main
 
 
-@patch("main.os.environ.get")
-@patch("main.argparse.ArgumentParser.parse_args")
-def test_main_no_api_key(mock_parse_args, mock_get_env, caplog):
-    mock_parse_args.return_value = MagicMock(
-        dry_run=True, no_mark_read=True, email="test@example.com"
-    )
-    mock_get_env.return_value = None
-
-    with caplog.at_level(logging.ERROR):
-        with patch.object(sys, "argv", ["main.py", "--email", "test@example.com"]):
-            main()
-
-    assert "OPENAI_API_KEY not set in environment" in caplog.text
-
-
 @patch("main.get_gmail_service")
 @patch("main.fetch_latest_astroph_email")
-@patch("main.os.environ.get")
 @patch("main.argparse.ArgumentParser.parse_args")
-def test_main_no_emails(
-    mock_parse_args, mock_get_env, mock_fetch, mock_get_gmail, caplog
-):
+def test_main_no_emails(mock_parse_args, mock_fetch, mock_get_gmail, caplog):
     mock_parse_args.return_value = MagicMock(
         dry_run=True, no_mark_read=True, email="test@example.com"
     )
-    mock_get_env.return_value = "dummy_key"
     mock_fetch.return_value = None
 
     with caplog.at_level(logging.INFO):
@@ -47,11 +28,9 @@ def test_main_no_emails(
 @patch("main.download_and_extract_text")
 @patch("main.summarize_paper")
 @patch("main.send_email")
-@patch("main.os.environ.get")
 @patch("main.argparse.ArgumentParser.parse_args")
 def test_main_happy_path(
     mock_parse_args,
-    mock_get_env,
     mock_send,
     mock_summarize,
     mock_download,
@@ -63,7 +42,6 @@ def test_main_happy_path(
     mock_parse_args.return_value = MagicMock(
         dry_run=False, no_mark_read=False, email="test@example.com"
     )
-    mock_get_env.return_value = "dummy_key"
     mock_fetch.return_value = "raw email content"
     mock_parse.return_value = [
         {"arxiv_id": "123", "title": "Test Paper", "abstract": "Stuff"}
@@ -86,11 +64,9 @@ def test_main_happy_path(
 @patch("main.fetch_latest_astroph_email")
 @patch("main.parse_email_text")
 @patch("main.filter_papers")
-@patch("main.os.environ.get")
 @patch("main.argparse.ArgumentParser.parse_args")
 def test_main_no_matched_papers(
     mock_parse_args,
-    mock_get_env,
     mock_filter,
     mock_parse,
     mock_fetch,
@@ -100,7 +76,6 @@ def test_main_no_matched_papers(
     mock_parse_args.return_value = MagicMock(
         dry_run=True, no_mark_read=True, email="test@example.com"
     )
-    mock_get_env.return_value = "dummy_key"
     mock_fetch.return_value = "raw email content"
     mock_parse.return_value = [
         {"arxiv_id": "123", "title": "Test Paper", "abstract": "Stuff"}
@@ -117,15 +92,13 @@ def test_main_no_matched_papers(
 @patch("main.get_gmail_service")
 @patch("main.fetch_latest_astroph_email")
 @patch("main.parse_email_text")
-@patch("main.os.environ.get")
 @patch("main.argparse.ArgumentParser.parse_args")
 def test_main_no_valid_papers(
-    mock_parse_args, mock_get_env, mock_parse, mock_fetch, mock_get_gmail, caplog
+    mock_parse_args, mock_parse, mock_fetch, mock_get_gmail, caplog
 ):
     mock_parse_args.return_value = MagicMock(
         dry_run=True, no_mark_read=True, email="test@example.com"
     )
-    mock_get_env.return_value = "dummy_key"
     mock_fetch.return_value = "raw email content"
     mock_parse.return_value = []
 
@@ -137,13 +110,11 @@ def test_main_no_valid_papers(
 
 
 @patch("main.get_gmail_service")
-@patch("main.os.environ.get")
 @patch("main.argparse.ArgumentParser.parse_args")
-def test_main_gmail_auth_failure(mock_parse_args, mock_get_env, mock_get_gmail, caplog):
+def test_main_gmail_auth_failure(mock_parse_args, mock_get_gmail, caplog):
     mock_parse_args.return_value = MagicMock(
         dry_run=True, no_mark_read=True, email="test@example.com"
     )
-    mock_get_env.return_value = "dummy_key"
     mock_get_gmail.side_effect = Exception("Credentials not found")
 
     with caplog.at_level(logging.ERROR):
@@ -151,3 +122,81 @@ def test_main_gmail_auth_failure(mock_parse_args, mock_get_env, mock_get_gmail, 
             main()
 
     assert "Gmail authentication failed: Credentials not found" in caplog.text
+
+
+@patch("main.get_gmail_service")
+@patch("main.fetch_latest_astroph_email")
+@patch("main.parse_email_text")
+@patch("main.filter_papers")
+@patch("main.download_and_extract_text")
+@patch("main.summarize_paper")
+@patch("main.send_email")
+@patch("main.argparse.ArgumentParser.parse_args")
+def test_main_send_email_failure(
+    mock_parse_args,
+    mock_send,
+    mock_summarize,
+    mock_download,
+    mock_filter,
+    mock_parse,
+    mock_fetch,
+    mock_get_gmail,
+    caplog,
+):
+    mock_parse_args.return_value = MagicMock(
+        dry_run=False, no_mark_read=False, email="test@example.com"
+    )
+    mock_fetch.return_value = "raw email content"
+    mock_parse.return_value = [
+        {"arxiv_id": "123", "title": "Test Paper", "abstract": "Stuff"}
+    ]
+    mock_filter.return_value = ["123"]
+    mock_download.return_value = "Extracted PDF text"
+    mock_summarize.return_value = "## Summary"
+    mock_send.return_value = False  # Simulate failure
+
+    with caplog.at_level(logging.ERROR):
+        with patch.object(sys, "argv", ["main.py", "--email", "test@example.com"]):
+            main()
+
+    assert "Failed to send email." in caplog.text
+
+
+@patch("main.get_gmail_service")
+@patch("main.fetch_latest_astroph_email")
+@patch("main.parse_email_text")
+@patch("main.filter_papers")
+@patch("main.download_and_extract_text")
+@patch("main.summarize_paper")
+@patch("main.argparse.ArgumentParser.parse_args")
+def test_main_no_summaries_generated(
+    mock_parse_args,
+    mock_summarize,
+    mock_download,
+    mock_filter,
+    mock_parse,
+    mock_fetch,
+    mock_get_gmail,
+    caplog,
+):
+    mock_parse_args.return_value = MagicMock(
+        dry_run=False, no_mark_read=False, email="test@example.com"
+    )
+    mock_fetch.return_value = "raw email content"
+    mock_parse.return_value = [
+        {"arxiv_id": "123", "title": "Test Paper", "abstract": "Stuff"}
+    ]
+    mock_filter.return_value = ["123"]
+    mock_download.return_value = "Extracted PDF text"
+    mock_summarize.return_value = (
+        ""  # Return empty summary to trigger no summaries condition
+    )
+
+    # Wait, the code append to summaries regardless if it's empty, but let's say download fails:
+    mock_download.return_value = None
+
+    with caplog.at_level(logging.WARNING):
+        with patch.object(sys, "argv", ["main.py", "--email", "test@example.com"]):
+            main()
+
+    assert "No summaries generated." in caplog.text

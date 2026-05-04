@@ -1,4 +1,3 @@
-import os
 import argparse
 import logging
 from dotenv import load_dotenv
@@ -28,11 +27,6 @@ def main():
     )
     args = parser.parse_args()
 
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        logging.error("OPENAI_API_KEY not set in environment.")
-        return
-
     logging.info("Authenticating with Gmail...")
     try:
         service = get_gmail_service()
@@ -57,7 +51,7 @@ def main():
         return
 
     logging.info("Filtering papers with LLM...")
-    matched_ids = filter_papers(papers, api_key=api_key)
+    matched_ids = filter_papers(papers)
     logging.info(f"Found {len(matched_ids)} matching papers: {matched_ids}")
 
     if not matched_ids:
@@ -77,7 +71,7 @@ def main():
             continue
 
         logging.info(f"Summarizing {paper['arxiv_id']}...")
-        summary = summarize_paper(paper, full_text, api_key=api_key)
+        summary = summarize_paper(paper, full_text)
         summaries.append(summary)
 
     if not summaries:
