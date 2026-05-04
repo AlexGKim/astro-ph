@@ -1,5 +1,6 @@
 import os.path
 import base64
+import logging
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -114,6 +115,6 @@ def send_email(service, to_email, subject, body_text):
             service.users().messages().send(userId="me", body=create_message).execute()
         )
         return sent_message
-    except Exception as error:
-        print(f"An error occurred: {error}")
+    except HttpError as error:
+        logging.error(f"An error occurred: {error}")
         return None
