@@ -195,7 +195,7 @@ def test_main_no_summaries_generated(
     # Wait, the code append to summaries regardless if it's empty, but let's say download fails:
     mock_download.return_value = None
 
-    with caplog.at_level(logging.WARNING):
+    with caplog.at_level(logging.INFO):
         with patch.object(sys, "argv", ["main.py", "--email", "test@example.com"]):
             main()
 
