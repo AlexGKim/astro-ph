@@ -13,10 +13,10 @@ def mock_papers():
     ]
 
 
-@patch("llm_filter.boto3.client")
-def test_filter_papers(mock_boto3_client, mock_papers):
+@patch("llm_filter.get_bedrock_client")
+def test_filter_papers(mock_get_bedrock_client, mock_papers):
     mock_client = MagicMock()
-    mock_boto3_client.return_value = mock_client
+    mock_get_bedrock_client.return_value = mock_client
 
     mock_response = {"output": {"message": {"content": [{"text": '["2405.00001"]'}]}}}
     mock_client.converse.return_value = mock_response
@@ -27,10 +27,10 @@ def test_filter_papers(mock_boto3_client, mock_papers):
     mock_client.converse.assert_called_once()
 
 
-@patch("llm_filter.boto3.client")
-def test_filter_papers_markdown_stripping(mock_boto3_client, mock_papers):
+@patch("llm_filter.get_bedrock_client")
+def test_filter_papers_markdown_stripping(mock_get_bedrock_client, mock_papers):
     mock_client = MagicMock()
-    mock_boto3_client.return_value = mock_client
+    mock_get_bedrock_client.return_value = mock_client
 
     # Test markdown block handling
     mock_response = {
@@ -42,10 +42,10 @@ def test_filter_papers_markdown_stripping(mock_boto3_client, mock_papers):
     assert matched_ids == ["2405.00002"]
 
 
-@patch("llm_filter.boto3.client")
-def test_filter_papers_malformed_json(mock_boto3_client, caplog, mock_papers):
+@patch("llm_filter.get_bedrock_client")
+def test_filter_papers_malformed_json(mock_get_bedrock_client, caplog, mock_papers):
     mock_client = MagicMock()
-    mock_boto3_client.return_value = mock_client
+    mock_get_bedrock_client.return_value = mock_client
 
     # Test malformed JSON
     mock_response = {
@@ -68,12 +68,12 @@ def test_filter_papers_malformed_json(mock_boto3_client, caplog, mock_papers):
         BotoCoreError(),
     ],
 )
-@patch("llm_filter.boto3.client")
+@patch("llm_filter.get_bedrock_client")
 def test_filter_papers_bedrock_error(
-    mock_boto3_client, caplog, error_instance, mock_papers
+    mock_get_bedrock_client, caplog, error_instance, mock_papers
 ):
     mock_client = MagicMock()
-    mock_boto3_client.return_value = mock_client
+    mock_get_bedrock_client.return_value = mock_client
 
     mock_client.converse.side_effect = error_instance
 
@@ -82,10 +82,10 @@ def test_filter_papers_bedrock_error(
     assert "Bedrock API error" in caplog.text
 
 
-@patch("llm_filter.boto3.client")
-def test_filter_papers_batching(mock_boto3_client):
+@patch("llm_filter.get_bedrock_client")
+def test_filter_papers_batching(mock_get_bedrock_client):
     mock_client = MagicMock()
-    mock_boto3_client.return_value = mock_client
+    mock_get_bedrock_client.return_value = mock_client
 
     mock_response1 = {"output": {"message": {"content": [{"text": '["1"]'}]}}}
     mock_response2 = {"output": {"message": {"content": [{"text": '["21"]'}]}}}

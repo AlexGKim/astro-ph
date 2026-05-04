@@ -4,10 +4,10 @@ from botocore.exceptions import BotoCoreError
 from summarizer import summarize_paper
 
 
-@patch("summarizer.boto3.client")
-def test_summarize_paper(mock_boto3_client):
+@patch("summarizer.get_bedrock_client")
+def test_summarize_paper(mock_get_bedrock_client):
     mock_client = MagicMock()
-    mock_boto3_client.return_value = mock_client
+    mock_get_bedrock_client.return_value = mock_client
 
     mock_response = {
         "output": {"message": {"content": [{"text": "## Summary\nGood paper."}]}}
@@ -23,10 +23,10 @@ def test_summarize_paper(mock_boto3_client):
     mock_client.converse.assert_called_once()
 
 
-@patch("summarizer.boto3.client")
-def test_summarize_paper_error(mock_boto3_client):
+@patch("summarizer.get_bedrock_client")
+def test_summarize_paper_error(mock_get_bedrock_client):
     mock_client = MagicMock()
-    mock_boto3_client.return_value = mock_client
+    mock_get_bedrock_client.return_value = mock_client
 
     mock_client.converse.side_effect = BotoCoreError()
 

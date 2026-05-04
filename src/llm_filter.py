@@ -23,12 +23,22 @@ INTERESTS = """
 BATCH_SIZE = 20
 
 
+_bedrock_client = None
+
+
+def get_bedrock_client():
+    global _bedrock_client
+    if _bedrock_client is None:
+        _bedrock_client = boto3.client("bedrock-runtime")
+    return _bedrock_client
+
+
 def filter_papers(papers, model="anthropic.claude-3-haiku-20240307-v1:0"):
     """Uses LLM to filter papers. Returns list of matched arXiv IDs."""
     if not papers:
         return []
 
-    client = boto3.client("bedrock-runtime")
+    client = get_bedrock_client()
     all_matched_ids = []
 
     # Process papers in batches of BATCH_SIZE to avoid context limits

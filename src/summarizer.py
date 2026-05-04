@@ -3,11 +3,21 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 
 
+_bedrock_client = None
+
+
+def get_bedrock_client():
+    global _bedrock_client
+    if _bedrock_client is None:
+        _bedrock_client = boto3.client("bedrock-runtime")
+    return _bedrock_client
+
+
 def summarize_paper(
     paper_metadata, full_text, model="anthropic.claude-3-5-sonnet-20240620-v1:0"
 ):
     """Sends full text to LLM for a structured summary."""
-    client = boto3.client("bedrock-runtime")
+    client = get_bedrock_client()
 
     # Truncate text if it's absurdly long
     # 100,000 chars is usually safe for a paper
