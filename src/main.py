@@ -34,7 +34,11 @@ def main():
         return
 
     logging.info("Authenticating with Gmail...")
-    service = get_gmail_service()
+    try:
+        service = get_gmail_service()
+    except Exception as e:
+        logging.error(f"Gmail authentication failed: {e}")
+        return
 
     logging.info("Fetching latest astro-ph email...")
     mark_read = not args.no_mark_read

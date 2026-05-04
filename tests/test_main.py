@@ -81,38 +81,73 @@ def test_main_happy_path(
     assert args[1] == "test@example.com"
     assert "## Summary" in args[3]
 
-@patch('main.get_gmail_service')
-@patch('main.fetch_latest_astroph_email')
-@patch('main.parse_email_text')
-@patch('main.filter_papers')
-@patch('main.os.environ.get')
-@patch('main.argparse.ArgumentParser.parse_args')
-def test_main_no_matched_papers(mock_parse_args, mock_get_env, mock_filter, mock_parse, mock_fetch, mock_get_gmail, caplog):
-    mock_parse_args.return_value = MagicMock(dry_run=True, no_mark_read=True, email="test@example.com")
+
+@patch("main.get_gmail_service")
+@patch("main.fetch_latest_astroph_email")
+@patch("main.parse_email_text")
+@patch("main.filter_papers")
+@patch("main.os.environ.get")
+@patch("main.argparse.ArgumentParser.parse_args")
+def test_main_no_matched_papers(
+    mock_parse_args,
+    mock_get_env,
+    mock_filter,
+    mock_parse,
+    mock_fetch,
+    mock_get_gmail,
+    caplog,
+):
+    mock_parse_args.return_value = MagicMock(
+        dry_run=True, no_mark_read=True, email="test@example.com"
+    )
     mock_get_env.return_value = "dummy_key"
     mock_fetch.return_value = "raw email content"
-    mock_parse.return_value = [{'arxiv_id': '123', 'title': 'Test Paper', 'abstract': 'Stuff'}]
+    mock_parse.return_value = [
+        {"arxiv_id": "123", "title": "Test Paper", "abstract": "Stuff"}
+    ]
     mock_filter.return_value = []
-    
+
     with caplog.at_level(logging.INFO):
-        with patch.object(sys, 'argv', ['main.py', '--email', 'test@example.com']):
+        with patch.object(sys, "argv", ["main.py", "--email", "test@example.com"]):
             main()
-            
+
     assert "No papers matched interests today" in caplog.text
 
-@patch('main.get_gmail_service')
-@patch('main.fetch_latest_astroph_email')
-@patch('main.parse_email_text')
-@patch('main.os.environ.get')
-@patch('main.argparse.ArgumentParser.parse_args')
-def test_main_no_valid_papers(mock_parse_args, mock_get_env, mock_parse, mock_fetch, mock_get_gmail, caplog):
-    mock_parse_args.return_value = MagicMock(dry_run=True, no_mark_read=True, email="test@example.com")
+
+@patch("main.get_gmail_service")
+@patch("main.fetch_latest_astroph_email")
+@patch("main.parse_email_text")
+@patch("main.os.environ.get")
+@patch("main.argparse.ArgumentParser.parse_args")
+def test_main_no_valid_papers(
+    mock_parse_args, mock_get_env, mock_parse, mock_fetch, mock_get_gmail, caplog
+):
+    mock_parse_args.return_value = MagicMock(
+        dry_run=True, no_mark_read=True, email="test@example.com"
+    )
     mock_get_env.return_value = "dummy_key"
     mock_fetch.return_value = "raw email content"
     mock_parse.return_value = []
-    
+
     with caplog.at_level(logging.INFO):
-        with patch.object(sys, 'argv', ['main.py', '--email', 'test@example.com']):
+        with patch.object(sys, "argv", ["main.py", "--email", "test@example.com"]):
             main()
-            
+
     assert "No valid papers found to parse" in caplog.text
+
+
+@patch("main.get_gmail_service")
+@patch("main.os.environ.get")
+@patch("main.argparse.ArgumentParser.parse_args")
+def test_main_gmail_auth_failure(mock_parse_args, mock_get_env, mock_get_gmail, caplog):
+    mock_parse_args.return_value = MagicMock(
+        dry_run=True, no_mark_read=True, email="test@example.com"
+    )
+    mock_get_env.return_value = "dummy_key"
+    mock_get_gmail.side_effect = Exception("Credentials not found")
+
+    with caplog.at_level(logging.ERROR):
+        with patch.object(sys, "argv", ["main.py", "--email", "test@example.com"]):
+            main()
+
+    assert "Gmail authentication failed: Credentials not found" in caplog.text
