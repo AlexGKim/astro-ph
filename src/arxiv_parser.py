@@ -2,6 +2,8 @@ import re
 import logging
 from typing import List, Dict
 
+logger = logging.getLogger(__name__)
+
 
 def parse_email_text(email_text: str) -> List[Dict[str, str]]:
     """Parses arXiv email text into a list of paper dictionaries."""
@@ -12,7 +14,7 @@ def parse_email_text(email_text: str) -> List[Dict[str, str]]:
     blocks = email_text.split("\\\\\n")
 
     for block in blocks:
-        if not block.strip() or "astro-ph daily" in block:
+        if not block.strip():
             continue
 
         # Extract ID
@@ -27,7 +29,7 @@ def parse_email_text(email_text: str) -> List[Dict[str, str]]:
             title = re.sub(r"\s+", " ", title_match.group(1).strip())
         else:
             title = ""
-            logging.warning(f"Missing Title for arXiv ID: {arxiv_id}")
+            logger.warning(f"Missing Title for arXiv ID: {arxiv_id}")
 
         # Extract Authors
         authors_match = re.search(r"Authors:\s*(.*?)\nCategories:", block, re.DOTALL)
@@ -35,7 +37,7 @@ def parse_email_text(email_text: str) -> List[Dict[str, str]]:
             authors = re.sub(r"\s+", " ", authors_match.group(1).strip())
         else:
             authors = ""
-            logging.warning(f"Missing Authors for arXiv ID: {arxiv_id}")
+            logger.warning(f"Missing Authors for arXiv ID: {arxiv_id}")
 
         # Extract Abstract
         # It's usually after Categories and before the closing \\ ( https...
@@ -46,7 +48,7 @@ def parse_email_text(email_text: str) -> List[Dict[str, str]]:
             abstract = re.sub(r"\s+", " ", abstract_match.group(1).strip())
         else:
             abstract = ""
-            logging.warning(f"Missing Abstract for arXiv ID: {arxiv_id}")
+            logger.warning(f"Missing Abstract for arXiv ID: {arxiv_id}")
 
         papers.append(
             {

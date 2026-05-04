@@ -5,7 +5,7 @@ from arxiv_parser import parse_email_text
 
 def test_parse_email_text():
     data_path = pathlib.Path(__file__).parent / "data" / "sample_email.txt"
-    with open(data_path, "r") as f:
+    with open(data_path, "r", encoding="utf-8") as f:
         text = f.read()
 
     papers = parse_email_text(text)
