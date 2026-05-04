@@ -1,3 +1,4 @@
+import logging
 from openai import OpenAI, OpenAIError
 
 
@@ -6,7 +7,7 @@ def summarize_paper(paper_metadata, full_text, api_key=None):
     client = OpenAI(api_key=api_key)
 
     # Truncate text if it's absurdly long, though gpt-4o handles 128k
-    # 50,000 chars is usually safe for a paper
+    # 100,000 chars is usually safe for a paper
     safe_text = full_text[:100000]
 
     prompt = f"""
@@ -46,12 +47,8 @@ def summarize_paper(paper_metadata, full_text, api_key=None):
         content = response.choices[0].message.content
         return content.strip() if content else ""
     except OpenAIError as e:
-        import logging
-
         logging.error(f"OpenAI API error during summarization: {e}")
         return f"## [{paper_metadata['title']}](https://arxiv.org/abs/{paper_metadata['arxiv_id']})\n\n**Error:** Could not generate summary due to API error."
     except Exception as e:
-        import logging
-
         logging.error(f"Unexpected error during summarization: {e}")
         return f"## [{paper_metadata['title']}](https://arxiv.org/abs/{paper_metadata['arxiv_id']})\n\n**Error:** Could not generate summary due to an unexpected error."
