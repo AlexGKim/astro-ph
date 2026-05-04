@@ -8,11 +8,12 @@ from llm_filter import filter_papers
 from pdf_processor import download_and_extract_text
 from summarizer import summarize_paper
 
-load_dotenv()
-
+# Set up basic logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+
+load_dotenv()
 
 
 def main():
@@ -28,13 +29,12 @@ def main():
     )
     args = parser.parse_args()
 
-    api_key = os.environ.get("OPENAI_API_KEY")
-    if not api_key:
-        logging.error("OPENAI_API_KEY not set in environment.")
-        return
-
     logging.info("Authenticating with Gmail...")
-    service = get_gmail_service()
+    try:
+        service = get_gmail_service()
+    except Exception as e:
+        logging.error(f"Failed to authenticate with Gmail: {e}")
+        return
 
     logging.info("Fetching latest astro-ph email...")
     mark_read = not args.no_mark_read
@@ -46,21 +46,22 @@ def main():
 
     logging.info("Parsing email...")
     papers = parse_email_text(email_text)
-    logging.info(f"Found {len(papers)} papers in email.")
 
     if not papers:
         logging.info("No valid papers found to parse.")
         return
 
+    logging.info(f"Found {len(papers)} papers in email.")
+
     logging.info("Filtering papers with LLM...")
-    matched_ids = filter_papers(papers, api_key=api_key)
+    matched_ids = filter_papers(papers)
     logging.info(f"Found {len(matched_ids)} matching papers: {matched_ids}")
 
     if not matched_ids:
         logging.info("No papers matched interests today.")
         return
 
-    # Filter papers to only include matched ones
+    # Create a lookup dict for matched papers
     matched_papers = [p for p in papers if p["arxiv_id"] in matched_ids]
 
     summaries = []
@@ -73,24 +74,25 @@ def main():
             continue
 
         logging.info(f"Summarizing {paper['arxiv_id']}...")
-        summary = summarize_paper(paper, full_text, api_key=api_key)
+        summary = summarize_paper(paper, full_text)
         summaries.append(summary)
 
     if not summaries:
-        logging.warning("No summaries generated.")
+        logging.info("No summaries generated.")
         return
 
     final_report = "# Astro-ph Daily Summary\n\n" + "\n\n---\n\n".join(summaries)
 
     if args.dry_run:
-        logging.info("DRY RUN OUTPUT:\n" + final_report)
+        logging.info("\n--- DRY RUN OUTPUT ---\n")
+        print(final_report)
     else:
         logging.info(f"Sending email to {args.email}...")
-        sent = send_email(
+        result = send_email(
             service, args.email, "Your Astro-ph Daily Summary", final_report
         )
-        if sent:
-            logging.info("Done! Email sent successfully.")
+        if result:
+            logging.info("Email sent successfully!")
         else:
             logging.error("Failed to send email.")
 
