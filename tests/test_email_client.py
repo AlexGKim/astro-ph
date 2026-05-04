@@ -1,6 +1,9 @@
 import pytest
-from unittest.mock import patch, MagicMock
-from email_client import get_gmail_service
+import base64
+from unittest.mock import patch, MagicMock, ANY
+from googleapiclient.errors import HttpError
+
+from email_client import get_gmail_service, fetch_latest_astroph_email, send_email
 
 
 @patch("email_client.Credentials")
@@ -102,10 +105,6 @@ def test_get_gmail_service_missing_credentials(tmp_path):
         get_gmail_service(token_path=str(token_file), creds_path=str(creds_file))
 
 
-import base64
-from email_client import fetch_latest_astroph_email
-
-
 def test_fetch_latest_astroph_email():
     mock_service = MagicMock()
     mock_messages = MagicMock()
@@ -138,11 +137,6 @@ def test_fetch_latest_astroph_email_no_messages():
 
     email_text = fetch_latest_astroph_email(mock_service)
     assert email_text is None
-
-
-from email_client import send_email
-from unittest.mock import ANY
-from googleapiclient.errors import HttpError
 
 
 def test_send_email():

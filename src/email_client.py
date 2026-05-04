@@ -1,6 +1,7 @@
 import os.path
 import base64
 import logging
+from email.message import EmailMessage
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -8,6 +9,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
+DEFAULT_SEARCH_QUERY = 'from:no-reply@arxiv.org subject:"astro-ph daily" is:unread'
 
 
 def get_gmail_service(token_path="token.json", creds_path="credentials.json"):
@@ -16,7 +18,7 @@ def get_gmail_service(token_path="token.json", creds_path="credentials.json"):
     if os.path.exists(token_path):
         try:
             creds = Credentials.from_authorized_user_file(token_path, SCOPES)
-        except Exception:
+        except ValueError:
             # Fallback if token is corrupted
             creds = None
 
@@ -45,10 +47,9 @@ def get_body_data(parts_list):
     return ""
 
 
-def fetch_latest_astroph_email(service, mark_read=True):
+def fetch_latest_astroph_email(service, mark_read=True, query=DEFAULT_SEARCH_QUERY):
     """Fetches the latest unread astro-ph daily email."""
     try:
-        query = 'from:no-reply@arxiv.org subject:"astro-ph daily" is:unread'
         results = (
             service.users()
             .messages()
@@ -92,11 +93,8 @@ def fetch_latest_astroph_email(service, mark_read=True):
 
         return text
     except HttpError as error:
-        print(f"An API error occurred: {error}")
+        logging.error(f"An API error occurred: {error}")
         return None
-
-
-from email.message import EmailMessage
 
 
 def send_email(service, to_email, subject, body_text):
