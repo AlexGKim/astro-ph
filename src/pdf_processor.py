@@ -1,6 +1,7 @@
 import arxiv
 import fitz  # PyMuPDF
 import os
+import tempfile
 
 
 def download_and_extract_text(arxiv_id):
@@ -13,7 +14,8 @@ def download_and_extract_text(arxiv_id):
         print(f"Paper {arxiv_id} not found via arXiv API.")
         return ""
 
-    filename = f"{arxiv_id.replace('.', '_')}.pdf"
+    fd, filename = tempfile.mkstemp(suffix=".pdf")
+    os.close(fd)
 
     try:
         # Download
