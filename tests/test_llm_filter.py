@@ -1,111 +1,105 @@
-# tests/test_llm_filter.py
 import pytest
 import json
-import openai
 from unittest.mock import patch, MagicMock
-from llm_filter import filter_papers
+from llm_filter import filter_papers, BATCH_SIZE
+from botocore.exceptions import ClientError, BotoCoreError
 
 
-@patch("llm_filter.OpenAI")
-def test_filter_papers_happy_path(mock_openai):
-    mock_client = MagicMock()
-    mock_openai.return_value = mock_client
-
-    # Mock the API response returning a JSON list of IDs
-    mock_response = MagicMock()
-    mock_response.choices[0].message.content = '["2405.00001"]'
-    mock_client.chat.completions.create.return_value = mock_response
-
-    papers = [
+@pytest.fixture
+def mock_papers():
+    return [
         {"arxiv_id": "2405.00001", "title": "SN Ia Paper", "abstract": "Stuff"},
         {"arxiv_id": "2405.00002", "title": "Galaxy Paper", "abstract": "Stuff"},
     ]
 
-    matched_ids = filter_papers(papers, api_key="dummy")
+
+@patch("llm_filter.get_bedrock_client")
+def test_filter_papers(mock_get_bedrock_client, mock_papers):
+    mock_client = MagicMock()
+    mock_get_bedrock_client.return_value = mock_client
+
+    mock_response = {"output": {"message": {"content": [{"text": '["2405.00001"]'}]}}}
+    mock_client.converse.return_value = mock_response
+
+    matched_ids = filter_papers(mock_papers)
 
     assert matched_ids == ["2405.00001"]
-    mock_client.chat.completions.create.assert_called_once()
+    mock_client.converse.assert_called_once()
 
 
-@patch("llm_filter.OpenAI")
-def test_filter_papers_markdown_stripping(mock_openai):
+@patch("llm_filter.get_bedrock_client")
+def test_filter_papers_markdown_stripping(mock_get_bedrock_client, mock_papers):
     mock_client = MagicMock()
-    mock_openai.return_value = mock_client
+    mock_get_bedrock_client.return_value = mock_client
 
-    mock_response = MagicMock()
     # Test markdown block handling
-    mock_response.choices[0].message.content = '```json\n["2405.00002"]\n```'
-    mock_client.chat.completions.create.return_value = mock_response
+    mock_response = {
+        "output": {"message": {"content": [{"text": '```json\n["2405.00002"]\n```'}]}}
+    }
+    mock_client.converse.return_value = mock_response
 
-    papers = [
-        {"arxiv_id": "2405.00002", "title": "Galaxy Paper", "abstract": "Stuff"},
-    ]
-
-    matched_ids = filter_papers(papers, api_key="dummy")
+    matched_ids = filter_papers(mock_papers)
     assert matched_ids == ["2405.00002"]
 
 
-@patch("llm_filter.OpenAI")
-def test_filter_papers_malformed_json(mock_openai, caplog):
+@patch("llm_filter.get_bedrock_client")
+def test_filter_papers_malformed_json(mock_get_bedrock_client, caplog, mock_papers):
     mock_client = MagicMock()
-    mock_openai.return_value = mock_client
+    mock_get_bedrock_client.return_value = mock_client
 
-    mock_response = MagicMock()
     # Test malformed JSON
-    mock_response.choices[
-        0
-    ].message.content = '["2405.00002"'  # missing closing bracket
-    mock_client.chat.completions.create.return_value = mock_response
+    mock_response = {
+        "output": {"message": {"content": [{"text": '["2405.00002"'}]}}
+    }  # missing closing bracket
+    mock_client.converse.return_value = mock_response
 
-    papers = [
-        {"arxiv_id": "2405.00002", "title": "Galaxy Paper", "abstract": "Stuff"},
-    ]
-
-    matched_ids = filter_papers(papers, api_key="dummy")
+    matched_ids = filter_papers(mock_papers)
     assert matched_ids == []
     assert "Error decoding JSON" in caplog.text
 
 
-@patch("llm_filter.OpenAI")
-def test_filter_papers_openai_error(mock_openai, caplog):
+@pytest.mark.parametrize(
+    "error_instance",
+    [
+        ClientError(
+            {"Error": {"Code": "ThrottlingException", "Message": "Rate exceeded"}},
+            "Converse",
+        ),
+        BotoCoreError(),
+    ],
+)
+@patch("llm_filter.get_bedrock_client")
+def test_filter_papers_bedrock_error(
+    mock_get_bedrock_client, caplog, error_instance, mock_papers
+):
     mock_client = MagicMock()
-    mock_openai.return_value = mock_client
+    mock_get_bedrock_client.return_value = mock_client
 
-    # Test OpenAIError
-    mock_client.chat.completions.create.side_effect = openai.OpenAIError(
-        "API rate limit exceeded"
-    )
+    mock_client.converse.side_effect = error_instance
 
-    papers = [
-        {"arxiv_id": "2405.00002", "title": "Galaxy Paper", "abstract": "Stuff"},
-    ]
-
-    matched_ids = filter_papers(papers, api_key="dummy")
+    matched_ids = filter_papers(mock_papers)
     assert matched_ids == []
-    assert "OpenAI API error" in caplog.text
+    assert "Bedrock API error" in caplog.text
 
 
-@patch("llm_filter.OpenAI")
-def test_filter_papers_batching(mock_openai):
+@patch("llm_filter.get_bedrock_client")
+def test_filter_papers_batching(mock_get_bedrock_client):
     mock_client = MagicMock()
-    mock_openai.return_value = mock_client
+    mock_get_bedrock_client.return_value = mock_client
 
-    mock_response1 = MagicMock()
-    mock_response1.choices[0].message.content = '["1"]'
-
-    mock_response2 = MagicMock()
-    mock_response2.choices[0].message.content = '["21"]'
+    mock_response1 = {"output": {"message": {"content": [{"text": '["1"]'}]}}}
+    mock_response2 = {"output": {"message": {"content": [{"text": '["21"]'}]}}}
 
     # Return response1 for first batch, response2 for second batch
-    mock_client.chat.completions.create.side_effect = [mock_response1, mock_response2]
+    mock_client.converse.side_effect = [mock_response1, mock_response2]
 
     papers = [
         {"arxiv_id": str(i), "title": f"Paper {i}", "abstract": "Stuff"}
-        for i in range(1, 22)
+        for i in range(1, BATCH_SIZE + 2)
     ]
 
-    matched_ids = filter_papers(papers, api_key="dummy")
+    matched_ids = filter_papers(papers)
 
-    # 21 papers total, batch size is 20 -> 2 batches
-    assert mock_client.chat.completions.create.call_count == 2
+    # BATCH_SIZE + 1 papers total, -> 2 batches
+    assert mock_client.converse.call_count == 2
     assert matched_ids == ["1", "21"]

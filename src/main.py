@@ -7,11 +7,12 @@ from llm_filter import filter_papers
 from pdf_processor import download_and_extract_text
 from summarizer import summarize_paper
 
-load_dotenv()
-
+# Set up basic logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+
+load_dotenv()
 
 
 def main():
@@ -44,11 +45,12 @@ def main():
 
     logging.info("Parsing email...")
     papers = parse_email_text(email_text)
-    logging.info(f"Found {len(papers)} papers in email.")
 
     if not papers:
         logging.info("No valid papers found to parse.")
         return
+
+    logging.info(f"Found {len(papers)} papers in email.")
 
     logging.info("Filtering papers with LLM...")
     matched_ids = filter_papers(papers)
@@ -58,7 +60,7 @@ def main():
         logging.info("No papers matched interests today.")
         return
 
-    # Filter papers to only include matched ones
+    # Create a lookup dict for matched papers
     matched_papers = [p for p in papers if p["arxiv_id"] in matched_ids]
 
     summaries = []
@@ -75,20 +77,21 @@ def main():
         summaries.append(summary)
 
     if not summaries:
-        logging.warning("No summaries generated.")
+        logging.info("No summaries generated.")
         return
 
     final_report = "# Astro-ph Daily Summary\n\n" + "\n\n---\n\n".join(summaries)
 
     if args.dry_run:
-        logging.info("DRY RUN OUTPUT:\n" + final_report)
+        logging.info("\n--- DRY RUN OUTPUT ---\n")
+        print(final_report)
     else:
         logging.info(f"Sending email to {args.email}...")
-        sent = send_email(
+        result = send_email(
             service, args.email, "Your Astro-ph Daily Summary", final_report
         )
-        if sent:
-            logging.info("Done! Email sent successfully.")
+        if result:
+            logging.info("Email sent successfully!")
         else:
             logging.error("Failed to send email.")
 
