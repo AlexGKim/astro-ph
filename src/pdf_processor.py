@@ -7,7 +7,7 @@ def download_and_extract_text(arxiv_id):
     """Downloads PDF from arXiv and extracts text."""
     client = arxiv.Client()
     search = arxiv.Search(id_list=[arxiv_id])
-    paper = next(iter(client.results(search)), None)
+    paper = next(client.results(search), None)
 
     if not paper:
         print(f"Paper {arxiv_id} not found via arXiv API.")
@@ -17,9 +17,7 @@ def download_and_extract_text(arxiv_id):
 
     try:
         # Download
-        downloaded = paper.download_pdf(filename=filename)
-        if downloaded:
-            filename = downloaded
+        paper.download_pdf(filename=filename)
 
         # Extract Text
         text = ""
@@ -32,7 +30,5 @@ def download_and_extract_text(arxiv_id):
         return ""
     finally:
         # Cleanup
-        try:
+        if os.path.exists(filename):
             os.remove(filename)
-        except OSError:
-            pass
