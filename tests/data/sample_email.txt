@@ -1,0 +1,21 @@
+astro-ph daily
+------------------------------------------------------------------------------
+\\
+arXiv:2405.00001
+Date: Wed, 1 May 2024 14:00:00 GMT
+Title: A Cool Supernova Paper
+Authors: First Author, Second Author
+Categories: astro-ph.CO
+
+  We present a cool paper about supernovae. It is very neat.
+\\ ( https://arxiv.org/abs/2405.00001 )
+------------------------------------------------------------------------------
+\\
+arXiv:2405.00002
+Date: Wed, 1 May 2024 15:00:00 GMT
+Title: Another Paper
+Authors: Bob Smith
+Categories: astro-ph.GA
+
+  This is about galaxies.
+\\ ( https://arxiv.org/abs/2405.00002 )
