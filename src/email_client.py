@@ -93,3 +93,27 @@ def fetch_latest_astroph_email(service, mark_read=True):
     except HttpError as error:
         print(f"An API error occurred: {error}")
         return None
+
+
+from email.message import EmailMessage
+
+
+def send_email(service, to_email, subject, body_text):
+    """Sends an email using the Gmail API."""
+    message = EmailMessage()
+    message.set_content(body_text)
+    message["To"] = to_email
+    message["From"] = "me"
+    message["Subject"] = subject
+
+    encoded_message = base64.urlsafe_b64encode(message.as_bytes()).decode()
+    create_message = {"raw": encoded_message}
+
+    try:
+        sent_message = (
+            service.users().messages().send(userId="me", body=create_message).execute()
+        )
+        return sent_message
+    except Exception as error:
+        print(f"An error occurred: {error}")
+        return None

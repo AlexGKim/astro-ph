@@ -125,3 +125,16 @@ def test_fetch_latest_astroph_email_no_messages():
     
     email_text = fetch_latest_astroph_email(mock_service)
     assert email_text is None
+
+from email_client import send_email
+
+def test_send_email():
+    mock_service = MagicMock()
+    mock_messages = MagicMock()
+    mock_service.users().messages().send.return_value = mock_messages
+    mock_messages.execute.return_value = {'id': 'sent_id'}
+    
+    result = send_email(mock_service, "me@example.com", "Test Subject", "Test Body")
+    
+    mock_service.users().messages().send.assert_called_once()
+    assert result == {'id': 'sent_id'}
