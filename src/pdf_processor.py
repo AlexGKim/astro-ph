@@ -2,6 +2,7 @@ import arxiv
 import fitz  # PyMuPDF
 import os
 import tempfile
+import logging
 
 
 def download_and_extract_text(arxiv_id):
@@ -11,7 +12,7 @@ def download_and_extract_text(arxiv_id):
     paper = next(client.results(search), None)
 
     if not paper:
-        print(f"Paper {arxiv_id} not found via arXiv API.")
+        logging.warning(f"Paper {arxiv_id} not found via arXiv API.")
         return ""
 
     fd, filename = tempfile.mkstemp(suffix=".pdf")
@@ -28,7 +29,7 @@ def download_and_extract_text(arxiv_id):
                 text += page.get_text()
         return text
     except Exception as e:
-        print(f"Error processing {arxiv_id}: {e}")
+        logging.error(f"Error processing {arxiv_id}: {e}")
         return ""
     finally:
         # Cleanup
