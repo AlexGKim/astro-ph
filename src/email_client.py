@@ -11,7 +11,12 @@ def get_gmail_service(token_path="token.json", creds_path="credentials.json"):
     """Shows basic usage of the Gmail API."""
     creds = None
     if os.path.exists(token_path):
-        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+        try:
+            creds = Credentials.from_authorized_user_file(token_path, SCOPES)
+        except Exception:
+            # Fallback if token is corrupted
+            creds = None
+            
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
