@@ -91,3 +91,37 @@ def test_get_gmail_service_missing_credentials(tmp_path):
     
     with pytest.raises(FileNotFoundError, match=f"Missing {creds_file}"):
         get_gmail_service(token_path=str(token_file), creds_path=str(creds_file))
+import base64
+from email_client import fetch_latest_astroph_email
+
+def test_fetch_latest_astroph_email():
+    mock_service = MagicMock()
+    mock_messages = MagicMock()
+    mock_service.users().messages().list.return_value = mock_messages
+    mock_messages.execute.return_value = {'messages': [{'id': '123'}]}
+    
+    mock_message_get = MagicMock()
+    mock_service.users().messages().get.return_value = mock_message_get
+    
+    # Mocking base64 encoded payload "Subject: astro-ph daily\n\nHello World"
+    dummy_body = base64.urlsafe_b64encode(b"Hello World").decode('utf-8')
+    mock_message_get.execute.return_value = {
+        'payload': {
+            'parts': [{'mimeType': 'text/plain', 'body': {'data': dummy_body}}]
+        }
+    }
+    
+    email_text = fetch_latest_astroph_email(mock_service, mark_read=False)
+    
+    mock_service.users().messages().list.assert_called_once()
+    mock_service.users().messages().get.assert_called_once_with(userId='me', id='123', format='full')
+    assert email_text == "Hello World"
+
+def test_fetch_latest_astroph_email_no_messages():
+    mock_service = MagicMock()
+    mock_messages = MagicMock()
+    mock_service.users().messages().list.return_value = mock_messages
+    mock_messages.execute.return_value = {} # No messages
+    
+    email_text = fetch_latest_astroph_email(mock_service)
+    assert email_text is None
