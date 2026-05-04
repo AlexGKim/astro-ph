@@ -1,12 +1,15 @@
 import logging
-from openai import OpenAI, OpenAIError
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 
 
-def summarize_paper(paper_metadata, full_text, api_key=None):
+def summarize_paper(
+    paper_metadata, full_text, model="anthropic.claude-3-5-sonnet-20240620-v1:0"
+):
     """Sends full text to LLM for a structured summary."""
-    client = OpenAI(api_key=api_key)
+    client = boto3.client("bedrock-runtime")
 
-    # Truncate text if it's absurdly long, though gpt-4o handles 128k
+    # Truncate text if it's absurdly long
     # 100,000 chars is usually safe for a paper
     safe_text = full_text[:100000]
 
@@ -39,15 +42,15 @@ def summarize_paper(paper_metadata, full_text, api_key=None):
     """
 
     try:
-        response = client.chat.completions.create(
-            model="gpt-4o",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
+        response = client.converse(
+            modelId=model,
+            messages=[{"role": "user", "content": [{"text": prompt}]}],
+            inferenceConfig={"temperature": 0.3},
         )
-        content = response.choices[0].message.content
+        content = response["output"]["message"]["content"][0]["text"]
         return content.strip() if content else ""
-    except OpenAIError as e:
-        logging.error(f"OpenAI API error during summarization: {e}")
+    except (BotoCoreError, ClientError) as e:
+        logging.error(f"Bedrock API error during summarization: {e}")
         return f"## [{paper_metadata['title']}](https://arxiv.org/abs/{paper_metadata['arxiv_id']})\n\n**Error:** Could not generate summary due to API error."
     except Exception as e:
         logging.error(f"Unexpected error during summarization: {e}")
