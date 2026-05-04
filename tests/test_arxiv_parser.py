@@ -1,9 +1,11 @@
 import pytest
+import pathlib
 from arxiv_parser import parse_email_text
 
 
 def test_parse_email_text():
-    with open("tests/data/sample_email.txt", "r") as f:
+    data_path = pathlib.Path(__file__).parent / "data" / "sample_email.txt"
+    with open(data_path, "r") as f:
         text = f.read()
 
     papers = parse_email_text(text)

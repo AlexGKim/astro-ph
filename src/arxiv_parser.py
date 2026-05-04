@@ -1,7 +1,9 @@
 import re
+import logging
+from typing import List, Dict
 
 
-def parse_email_text(email_text):
+def parse_email_text(email_text: str) -> List[Dict[str, str]]:
     """Parses arXiv email text into a list of paper dictionaries."""
     papers = []
 
@@ -21,22 +23,30 @@ def parse_email_text(email_text):
 
         # Extract Title
         title_match = re.search(r"Title:\s*(.*?)\nAuthors:", block, re.DOTALL)
-        title = title_match.group(1).strip().replace("\n ", " ") if title_match else ""
+        if title_match:
+            title = re.sub(r"\s+", " ", title_match.group(1).strip())
+        else:
+            title = ""
+            logging.warning(f"Missing Title for arXiv ID: {arxiv_id}")
 
         # Extract Authors
         authors_match = re.search(r"Authors:\s*(.*?)\nCategories:", block, re.DOTALL)
-        authors = (
-            authors_match.group(1).strip().replace("\n ", " ") if authors_match else ""
-        )
+        if authors_match:
+            authors = re.sub(r"\s+", " ", authors_match.group(1).strip())
+        else:
+            authors = ""
+            logging.warning(f"Missing Authors for arXiv ID: {arxiv_id}")
 
         # Extract Abstract
         # It's usually after Categories and before the closing \\ ( https...
         abstract_match = re.search(
             r"Categories:.*?\n\n(.*?)(?=\\\\ \( https|-----)", block, re.DOTALL
         )
-        abstract = (
-            abstract_match.group(1).strip().replace("\n", " ") if abstract_match else ""
-        )
+        if abstract_match:
+            abstract = re.sub(r"\s+", " ", abstract_match.group(1).strip())
+        else:
+            abstract = ""
+            logging.warning(f"Missing Abstract for arXiv ID: {arxiv_id}")
 
         papers.append(
             {
