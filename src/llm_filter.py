@@ -1,6 +1,7 @@
 import json
 import logging
 import boto3
+import re
 from botocore.exceptions import BotoCoreError, ClientError
 
 logger = logging.getLogger(__name__)
@@ -29,11 +30,11 @@ _bedrock_client = None
 def get_bedrock_client():
     global _bedrock_client
     if _bedrock_client is None:
-        _bedrock_client = boto3.client("bedrock-runtime")
+        _bedrock_client = boto3.client("bedrock-runtime", region_name="us-east-1")
     return _bedrock_client
 
 
-def filter_papers(papers, model="anthropic.claude-3-haiku-20240307-v1:0"):
+def filter_papers(papers, model="us.anthropic.claude-haiku-4-5-20251001-v1:0"):
     """Uses LLM to filter papers. Returns list of matched arXiv IDs."""
     if not papers:
         return []
@@ -75,9 +76,10 @@ def filter_papers(papers, model="anthropic.claude-3-haiku-20240307-v1:0"):
 
             content = response["output"]["message"]["content"][0]["text"].strip()
 
-            # Handle markdown code blocks if the LLM adds them
-            if content.startswith("```"):
-                content = content.strip("`").removeprefix("json").strip()
+            # Robustly extract JSON array if there's conversational filler
+            match = re.search(r"\[.*\]", content, re.DOTALL)
+            if match:
+                content = match.group(0)
 
             matched_ids = json.loads(content)
             all_matched_ids.extend(matched_ids)

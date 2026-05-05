@@ -9,13 +9,11 @@ _bedrock_client = None
 def get_bedrock_client():
     global _bedrock_client
     if _bedrock_client is None:
-        _bedrock_client = boto3.client("bedrock-runtime")
+        _bedrock_client = boto3.client("bedrock-runtime", region_name="us-east-1")
     return _bedrock_client
 
 
-def summarize_paper(
-    paper_metadata, full_text, model="anthropic.claude-3-5-sonnet-20240620-v1:0"
-):
+def summarize_paper(paper_metadata, full_text, model="us.anthropic.claude-sonnet-4-6"):
     """Sends full text to LLM for a structured summary."""
     client = get_bedrock_client()
 
