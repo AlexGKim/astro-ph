@@ -12,7 +12,7 @@ def fetch_daily_astroph_papers():
     """
     client = arxiv.Client()
     search = arxiv.Search(
-        query="cat:astro-ph",
+        query="cat:astro-ph*",
         max_results=100,
         sort_by=arxiv.SortCriterion.SubmittedDate,
         sort_order=arxiv.SortOrder.Descending,
