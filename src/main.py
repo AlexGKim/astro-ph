@@ -1,8 +1,8 @@
 import argparse
 import logging
 from dotenv import load_dotenv
-from email_client import get_gmail_service, fetch_latest_astroph_email, send_email
-from arxiv_parser import parse_email_text
+from email_client import get_gmail_service, send_email
+from arxiv_fetcher import fetch_daily_astroph_papers
 from llm_filter import filter_papers
 from pdf_processor import download_and_extract_text
 from summarizer import summarize_paper
@@ -21,36 +21,28 @@ def main():
         "--dry-run", action="store_true", help="Process but don't send final email"
     )
     parser.add_argument(
-        "--no-mark-read", action="store_true", help="Don't mark the arxiv email as read"
-    )
-    parser.add_argument(
         "--email", type=str, required=True, help="Email address to send results to"
     )
     args = parser.parse_args()
 
-    logging.info("Authenticating with Gmail...")
-    try:
-        service = get_gmail_service()
-    except Exception as e:
-        logging.error(f"Gmail authentication failed: {e}")
-        return
+    # If we are actually sending an email, authenticate early to fail fast
+    service = None
+    if not args.dry_run:
+        logging.info("Authenticating with Gmail for delivery...")
+        try:
+            service = get_gmail_service()
+        except Exception as e:
+            logging.error(f"Gmail authentication failed: {e}")
+            return
 
-    logging.info("Fetching latest astro-ph email...")
-    mark_read = not args.no_mark_read
-    email_text = fetch_latest_astroph_email(service, mark_read=mark_read)
-
-    if not email_text:
-        logging.info("No unread astro-ph emails found.")
-        return
-
-    logging.info("Parsing email...")
-    papers = parse_email_text(email_text)
+    logging.info("Fetching latest astro-ph papers from arXiv API...")
+    papers = fetch_daily_astroph_papers()
 
     if not papers:
-        logging.info("No valid papers found to parse.")
+        logging.info("No recent astro-ph papers found.")
         return
 
-    logging.info(f"Found {len(papers)} papers in email.")
+    logging.info(f"Found {len(papers)} papers from the last 24 hours.")
 
     logging.info("Filtering papers with LLM...")
     matched_ids = filter_papers(papers)
@@ -60,7 +52,7 @@ def main():
         logging.info("No papers matched interests today.")
         return
 
-    # Create a lookup dict for matched papers
+    # Create a list of matched papers
     matched_papers = [p for p in papers if p["arxiv_id"] in matched_ids]
 
     summaries = []
