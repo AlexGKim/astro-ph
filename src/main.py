@@ -23,6 +23,11 @@ def main():
     parser.add_argument(
         "--email", type=str, required=True, help="Email address to send results to"
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Run in debug mode (7 days window, no max results)",
+    )
     args = parser.parse_args()
 
     # If we are actually sending an email, authenticate early to fail fast
@@ -36,13 +41,14 @@ def main():
             return
 
     logging.info("Fetching latest astro-ph papers from arXiv API...")
-    papers = fetch_daily_astroph_papers()
+    papers = fetch_daily_astroph_papers(debug=args.debug)
 
     if not papers:
         logging.info("No recent astro-ph papers found.")
         return
 
-    logging.info(f"Found {len(papers)} papers from the last 24 hours.")
+    time_window = "7 days" if args.debug else "24 hours"
+    logging.info(f"Found {len(papers)} papers from the last {time_window}.")
 
     logging.info("Filtering papers with LLM...")
     matched_ids = filter_papers(papers)

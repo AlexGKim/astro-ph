@@ -8,7 +8,9 @@ from main import main
 @patch("main.fetch_daily_astroph_papers")
 @patch("main.argparse.ArgumentParser.parse_args")
 def test_main_no_papers_found(mock_parse_args, mock_fetch, caplog):
-    mock_parse_args.return_value = MagicMock(dry_run=True, email="test@example.com")
+    mock_parse_args.return_value = MagicMock(
+        dry_run=True, email="test@example.com", debug=False
+    )
     mock_fetch.return_value = []
 
     with caplog.at_level(logging.INFO):
@@ -34,7 +36,9 @@ def test_main_happy_path(
     mock_fetch,
     mock_get_gmail,
 ):
-    mock_parse_args.return_value = MagicMock(dry_run=False, email="test@example.com")
+    mock_parse_args.return_value = MagicMock(
+        dry_run=False, email="test@example.com", debug=False
+    )
     mock_fetch.return_value = [
         {"arxiv_id": "123", "title": "Test Paper", "abstract": "Stuff"}
     ]
@@ -55,7 +59,9 @@ def test_main_happy_path(
 @patch("main.get_gmail_service")
 @patch("main.argparse.ArgumentParser.parse_args")
 def test_main_gmail_auth_failure(mock_parse_args, mock_get_gmail, caplog):
-    mock_parse_args.return_value = MagicMock(dry_run=False, email="test@example.com")
+    mock_parse_args.return_value = MagicMock(
+        dry_run=False, email="test@example.com", debug=False
+    )
     mock_get_gmail.side_effect = Exception("Credentials not found")
 
     with caplog.at_level(logging.ERROR):
