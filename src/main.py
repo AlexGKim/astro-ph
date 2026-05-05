@@ -43,42 +43,46 @@ def main():
     logging.info("Fetching latest astro-ph papers from arXiv API...")
     papers = fetch_daily_astroph_papers(debug=args.debug)
 
+    final_report = ""
+
     if not papers:
         logging.info("No recent astro-ph papers found.")
-        return
+        final_report = "# Astro-ph Daily Summary\n\nNo new astro-ph papers were submitted in the recent timeframe."
+    else:
+        time_window = "7 days" if args.debug else "24 hours"
+        logging.info(f"Found {len(papers)} papers from the last {time_window}.")
 
-    time_window = "7 days" if args.debug else "24 hours"
-    logging.info(f"Found {len(papers)} papers from the last {time_window}.")
+        logging.info("Filtering papers with LLM...")
+        matched_ids = filter_papers(papers)
+        logging.info(f"Found {len(matched_ids)} matching papers: {matched_ids}")
 
-    logging.info("Filtering papers with LLM...")
-    matched_ids = filter_papers(papers)
-    logging.info(f"Found {len(matched_ids)} matching papers: {matched_ids}")
+        if not matched_ids:
+            logging.info("No papers matched interests today.")
+            final_report = "# Astro-ph Daily Summary\n\nNo papers matched your research interests today."
+        else:
+            # Create a list of matched papers
+            matched_papers = [p for p in papers if p["arxiv_id"] in matched_ids]
 
-    if not matched_ids:
-        logging.info("No papers matched interests today.")
-        return
+            summaries = []
+            for paper in matched_papers:
+                logging.info(f"Processing PDF for {paper['arxiv_id']}...")
+                full_text = download_and_extract_text(paper["arxiv_id"])
 
-    # Create a list of matched papers
-    matched_papers = [p for p in papers if p["arxiv_id"] in matched_ids]
+                if not full_text:
+                    logging.warning(f"Could not extract text for {paper['arxiv_id']}")
+                    continue
 
-    summaries = []
-    for paper in matched_papers:
-        logging.info(f"Processing PDF for {paper['arxiv_id']}...")
-        full_text = download_and_extract_text(paper["arxiv_id"])
+                logging.info(f"Summarizing {paper['arxiv_id']}...")
+                summary = summarize_paper(paper, full_text)
+                summaries.append(summary)
 
-        if not full_text:
-            logging.warning(f"Could not extract text for {paper['arxiv_id']}")
-            continue
-
-        logging.info(f"Summarizing {paper['arxiv_id']}...")
-        summary = summarize_paper(paper, full_text)
-        summaries.append(summary)
-
-    if not summaries:
-        logging.info("No summaries generated.")
-        return
-
-    final_report = "# Astro-ph Daily Summary\n\n" + "\n\n---\n\n".join(summaries)
+            if not summaries:
+                logging.info("No summaries generated.")
+                final_report = "# Astro-ph Daily Summary\n\nCould not extract or summarize any of the matched papers today."
+            else:
+                final_report = "# Astro-ph Daily Summary\n\n" + "\n\n---\n\n".join(
+                    summaries
+                )
 
     if args.dry_run:
         logging.info("\n--- DRY RUN OUTPUT ---\n")
